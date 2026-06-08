@@ -1,335 +1,203 @@
 #!/usr/bin/env python3
-"""
-DONA UZBEK FROZEN FOOD - Telegram Bot v2
-python-telegram-bot 21.x uchun
-"""
-
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+import asyncio
 from datetime import datetime
-
-BOT_TOKEN = "8944732139:AAF9TFV3sbtfVCls-6JdqIkiK8T0WD-3_lo"
-ADMIN_CHAT_ID = 961419057
-
-PRODUCTS = {
-    "manti":      {"uz": "🥟 Manti",      "ru": "🥟 Манты",       "ko": "🥟 만티",     "price": 10000},
-    "somsa":      {"uz": "🥐 Somsa",      "ru": "🥐 Самса",       "ko": "🥐 삼사",     "price": 10000},
-    "kotlet":     {"uz": "🍖 Kotlet",     "ru": "🍖 Котлеты",     "ko": "🍖 커틀릿",   "price": 10000},
-    "blinchik":   {"uz": "🌯 Blinchik",   "ru": "🌯 Блинчики",    "ko": "🌯 블린치크", "price": 10000},
-    "varenik":    {"uz": "🥟 Varenik",    "ru": "🥟 Вареники",    "ko": "🥟 바레닉",   "price": 10000},
-    "honim":      {"uz": "🫔 Honim",      "ru": "🫔 Хоним",       "ko": "🫔 호님",     "price": 10000},
-    "frikadelka": {"uz": "🍡 Frikadelka", "ru": "🍡 Фрикадельки", "ko": "🍡 미트볼",   "price": 10000},
-}
-
-TEXTS = {
-    "uz": {
-        "welcome": "🇺🇿 <b>DONA UZBEK FROZEN FOOD</b>ga xush kelibsiz!\n\nMuzlatilgan o'zbek milliy taomlari ❄️",
-        "menu": "📋 Mahsulot tanlang:",
-        "cart": "🛒 Savatcha",
-        "cart_empty": "🛒 Savatcha bo'sh",
-        "total": "💰 Jami",
-        "order_btn": "✅ Buyurtma berish",
-        "clear": "🗑️ Tozalash",
-        "back": "⬅️ Ortga",
-        "enter_name": "👤 Ismingizni yozing:",
-        "enter_phone": "📱 Telefon raqamingizni yuboring:",
-        "enter_address": "📍 Manzilingizni yozing:",
-        "confirmed": "✅ <b>Buyurtmangiz qabul qilindi!</b>\nTez orada bog'lanamiz. Rahmat! 🙏",
-        "contact": "📞 <b>Aloqa:</b>\nTelegram: @mr_yigitaliev\n🚚 Butun Koreya",
-        "share_phone": "📱 Raqamni yuborish",
-    },
-    "ru": {
-        "welcome": "🇺🇿 Добро пожаловать в <b>DONA UZBEK FROZEN FOOD</b>!\n\nЗамороженные узбекские блюда ❄️",
-        "menu": "📋 Выберите продукт:",
-        "cart": "🛒 Корзина",
-        "cart_empty": "🛒 Корзина пуста",
-        "total": "💰 Итого",
-        "order_btn": "✅ Оформить заказ",
-        "clear": "🗑️ Очистить",
-        "back": "⬅️ Назад",
-        "enter_name": "👤 Введите ваше имя:",
-        "enter_phone": "📱 Отправьте номер телефона:",
-        "enter_address": "📍 Введите ваш адрес:",
-        "confirmed": "✅ <b>Заказ принят!</b>\nСвяжемся с вами. Спасибо! 🙏",
-        "contact": "📞 <b>Контакты:</b>\nTelegram: @mr_yigitaliev\n🚚 По всей Корее",
-        "share_phone": "📱 Отправить номер",
-    },
-    "ko": {
-        "welcome": "🇺🇿 <b>DONA UZBEK FROZEN FOOD</b>에 오신 것을 환영합니다!\n\n냉동 우즈베크 음식 ❄️",
-        "menu": "📋 제품을 선택하세요:",
-        "cart": "🛒 장바구니",
-        "cart_empty": "🛒 장바구니 비어 있음",
-        "total": "💰 합계",
-        "order_btn": "✅ 주문하기",
-        "clear": "🗑️ 비우기",
-        "back": "⬅️ 뒤로",
-        "enter_name": "👤 이름을 입력하세요:",
-        "enter_phone": "📱 전화번호를 보내주세요:",
-        "enter_address": "📍 주소를 입력하세요:",
-        "confirmed": "✅ <b>주문 접수!</b>\n곧 연락드립니다. 감사합니다! 🙏",
-        "contact": "📞 <b>연락처:</b>\nTelegram: @mr_yigitaliev\n🚚 한국 전국",
-        "share_phone": "📱 번호 보내기",
-    }
-}
-
-LANG, MENU, CART, NAME, PHONE, ADDRESS = range(6)
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
 logging.basicConfig(level=logging.INFO)
 
-def T(ctx, key):
-    return TEXTS[ctx.user_data.get("lang","uz")][key]
+BOT_TOKEN = "8944732139:AAF9TFV3sbtfVCls-6JdqIkiK8T0WD-3_lo"
+ADMIN_ID = 961419057
 
-def get_cart(ctx):
-    return ctx.user_data.setdefault("cart", {})
+PRODUCTS = {
+    "manti":      {"uz":"🥟 Manti",      "ru":"🥟 Манты",       "ko":"🥟 만티",     "price":10000},
+    "somsa":      {"uz":"🥐 Somsa",      "ru":"🥐 Самса",       "ko":"🥐 삼사",     "price":10000},
+    "kotlet":     {"uz":"🍖 Kotlet",     "ru":"🍖 Котлеты",     "ko":"🍖 커틀릿",   "price":10000},
+    "blinchik":   {"uz":"🌯 Blinchik",   "ru":"🌯 Блинчики",    "ko":"🌯 블린치크", "price":10000},
+    "varenik":    {"uz":"🥟 Varenik",    "ru":"🥟 Вареники",    "ko":"🥟 바레닉",   "price":10000},
+    "honim":      {"uz":"🫔 Honim",      "ru":"🫔 Хоним",       "ko":"🫔 호님",     "price":10000},
+    "frikadelka": {"uz":"🍡 Frikadelka", "ru":"🍡 Фрикадельки", "ko":"🍡 미트볼",   "price":10000},
+}
 
-def cart_total(cart):
-    return sum(PRODUCTS[k]["price"] * v for k, v in cart.items() if k in PRODUCTS)
+S_LANG, S_MENU, S_CART, S_NAME, S_PHONE, S_ADDR = range(6)
 
-def format_cart(cart, lang):
-    lines = []
-    for k, v in cart.items():
-        if k in PRODUCTS:
-            lines.append(f"{PRODUCTS[k][lang]} x{v} = {PRODUCTS[k]['price']*v:,} won")
-    return "\n".join(lines)
+def lang(ctx): return ctx.user_data.get("lang","uz")
+def cart(ctx): return ctx.user_data.setdefault("cart",{})
+
+WELCOME = {
+    "uz": "🇺🇿 <b>DONA UZBEK FROZEN FOOD</b>ga xush kelibsiz!\nMuzlatilgan o'zbek milliy taomlari ❄️",
+    "ru": "🇺🇿 Добро пожаловать в <b>DONA UZBEK FROZEN FOOD</b>!\nЗамороженные узбекские блюда ❄️",
+    "ko": "🇺🇿 <b>DONA UZBEK FROZEN FOOD</b>에 오신 것을 환영합니다!\n냉동 우즈베크 음식 ❄️",
+}
+MENU_T = {"uz":"📋 Mahsulot tanlang:","ru":"📋 Выберите продукт:","ko":"📋 제품을 선택하세요:"}
+CART_T = {"uz":"🛒 Savatcha","ru":"🛒 Корзина","ko":"🛒 장바구니"}
+EMPTY  = {"uz":"🛒 Savatcha bo'sh","ru":"🛒 Корзина пуста","ko":"🛒 장바구니 비어 있음"}
+TOTAL  = {"uz":"💰 Jami","ru":"💰 Итого","ko":"💰 합계"}
+ORDER  = {"uz":"✅ Buyurtma berish","ru":"✅ Оформить заказ","ko":"✅ 주문하기"}
+CLEAR  = {"uz":"🗑️ Tozalash","ru":"🗑️ Очистить","ko":"🗑️ 비우기"}
+BACK   = {"uz":"⬅️ Ortga","ru":"⬅️ Назад","ko":"⬅️ 뒤로"}
+NAMET  = {"uz":"👤 Ismingizni yozing:","ru":"👤 Введите имя:","ko":"👤 이름 입력:"}
+PHONET = {"uz":"📱 Telefon raqamingizni yuboring:","ru":"📱 Отправьте номер:","ko":"📱 전화번호 보내기:"}
+ADDRT  = {"uz":"📍 Manzilingizni yozing:","ru":"📍 Введите адрес:","ko":"📍 주소 입력:"}
+DONE   = {"uz":"✅ <b>Buyurtmangiz qabul qilindi!</b>\nTez orada bog'lanamiz 🙏","ru":"✅ <b>Заказ принят!</b>\nСвяжемся с вами 🙏","ko":"✅ <b>주문 접수!</b>\n곧 연락드립니다 🙏"}
+PHBTN  = {"uz":"📱 Raqamni yuborish","ru":"📱 Отправить номер","ko":"📱 번호 보내기"}
 
 def lang_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇺🇿 O'zbekcha", callback_data="lang_uz")],
-        [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
-        [InlineKeyboardButton("🇰🇷 한국어", callback_data="lang_ko")],
+        [InlineKeyboardButton("🇺🇿 O'zbekcha", callback_data="L_uz")],
+        [InlineKeyboardButton("🇷🇺 Русский",   callback_data="L_ru")],
+        [InlineKeyboardButton("🇰🇷 한국어",      callback_data="L_ko")],
     ])
 
-def main_kb(lang):
-    T = TEXTS[lang]
+def main_kb(l):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📋 Menyu / Меню / 메뉴", callback_data="menu")],
-        [InlineKeyboardButton(T["cart"], callback_data="cart"),
-         InlineKeyboardButton(T["order_btn"], callback_data="checkout")],
-        [InlineKeyboardButton(T["contact"], callback_data="contact")],
-        [InlineKeyboardButton("🌐 Til / Язык / 언어", callback_data="change_lang")],
+        [InlineKeyboardButton("📋 Menyu",          callback_data="menu")],
+        [InlineKeyboardButton(CART_T[l],           callback_data="cart"),
+         InlineKeyboardButton(ORDER[l],            callback_data="checkout")],
+        [InlineKeyboardButton("📞 Aloqa/Контакт",  callback_data="contact")],
+        [InlineKeyboardButton("🌐 Til/Язык/언어",   callback_data="chlang")],
     ])
 
-def products_kb(lang, cart):
-    T = TEXTS[lang]
+def prod_kb(l, c):
     rows = []
-    for k, p in PRODUCTS.items():
-        qty = cart.get(k, 0)
-        label = f"{p[lang]} — {p['price']:,} won" + (f" ✅x{qty}" if qty else "")
-        rows.append([InlineKeyboardButton(label, callback_data=f"add_{k}")])
-    rows.append([
-        InlineKeyboardButton(T["cart"], callback_data="cart"),
-        InlineKeyboardButton(T["back"], callback_data="main"),
-    ])
+    for k,p in PRODUCTS.items():
+        q = c.get(k,0)
+        label = p[l]+" — {:,} won".format(p["price"]) + (f" ✅{q}" if q else "")
+        rows.append([InlineKeyboardButton(label, callback_data="A_"+k)])
+    rows.append([InlineKeyboardButton(CART_T[l], callback_data="cart"),
+                 InlineKeyboardButton(BACK[l],   callback_data="main")])
     return InlineKeyboardMarkup(rows)
 
-def cart_kb(lang):
-    T = TEXTS[lang]
+def cart_kb(l):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(T["order_btn"], callback_data="checkout")],
-        [InlineKeyboardButton(T["clear"], callback_data="clear_cart")],
-        [InlineKeyboardButton(T["back"], callback_data="menu")],
+        [InlineKeyboardButton(ORDER[l],  callback_data="checkout")],
+        [InlineKeyboardButton(CLEAR[l],  callback_data="clearcart")],
+        [InlineKeyboardButton(BACK[l],   callback_data="menu")],
     ])
 
-async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+def fmt_cart(c, l):
+    return "\n".join(f"{PRODUCTS[k][l]} x{v} = {PRODUCTS[k]['price']*v:,} won" for k,v in c.items() if k in PRODUCTS)
+
+def total(c):
+    return sum(PRODUCTS[k]["price"]*v for k,v in c.items() if k in PRODUCTS)
+
+async def start(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.clear()
-    await update.message.reply_text(
-        "🌐 Tilni tanlang / Выберите язык / 언어 선택:",
-        reply_markup=lang_kb()
-    )
-    return LANG
+    await u.message.reply_text("🌐 Tilni tanlang / Выберите язык / 언어 선택:", reply_markup=lang_kb())
+    return S_LANG
 
-async def lang_chosen(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = q.data.split("_")[1]
-    ctx.user_data["lang"] = lang
-    await q.edit_message_text(
-        TEXTS[lang]["welcome"], parse_mode="HTML",
-        reply_markup=main_kb(lang)
-    )
-    return MENU
+async def set_lang(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    l = q.data[2:]; ctx.user_data["lang"] = l
+    await q.edit_message_text(WELCOME[l], parse_mode="HTML", reply_markup=main_kb(l))
+    return S_MENU
 
-async def show_main(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = ctx.user_data.get("lang","uz")
-    await q.edit_message_text(
-        TEXTS[lang]["welcome"], parse_mode="HTML",
-        reply_markup=main_kb(lang)
-    )
-    return MENU
+async def go_main(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    l = lang(ctx)
+    await q.edit_message_text(WELCOME[l], parse_mode="HTML", reply_markup=main_kb(l))
+    return S_MENU
 
-async def show_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = ctx.user_data.get("lang","uz")
-    cart = get_cart(ctx)
-    await q.edit_message_text(
-        TEXTS[lang]["menu"], parse_mode="HTML",
-        reply_markup=products_kb(lang, cart)
-    )
-    return MENU
+async def go_menu(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    l = lang(ctx); c = cart(ctx)
+    await q.edit_message_text(MENU_T[l], parse_mode="HTML", reply_markup=prod_kb(l,c))
+    return S_MENU
 
-async def add_item(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    key = q.data.replace("add_","")
-    cart = get_cart(ctx)
-    if key in PRODUCTS:
-        cart[key] = cart.get(key, 0) + 1
-    lang = ctx.user_data.get("lang","uz")
-    await q.edit_message_text(
-        TEXTS[lang]["menu"], parse_mode="HTML",
-        reply_markup=products_kb(lang, cart)
-    )
-    return MENU
+async def add(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    k = q.data[2:]; c = cart(ctx)
+    if k in PRODUCTS: c[k] = c.get(k,0)+1
+    l = lang(ctx)
+    await q.edit_message_text(MENU_T[l], parse_mode="HTML", reply_markup=prod_kb(l,c))
+    return S_MENU
 
-async def show_cart(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = ctx.user_data.get("lang","uz")
-    cart = get_cart(ctx)
-    if not cart:
-        await q.edit_message_text(
-            TEXTS[lang]["cart_empty"],
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton(TEXTS[lang]["back"], callback_data="menu")
-            ]])
-        )
-        return MENU
-    items = format_cart(cart, lang)
-    total = cart_total(cart)
-    await q.edit_message_text(
-        f"{TEXTS[lang]['cart']}\n\n{items}\n\n{TEXTS[lang]['total']}: <b>{total:,} won</b>",
-        parse_mode="HTML", reply_markup=cart_kb(lang)
-    )
-    return CART
+async def go_cart(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    l = lang(ctx); c = cart(ctx)
+    if not c:
+        await q.edit_message_text(EMPTY[l], reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(BACK[l], callback_data="menu")]]))
+        return S_MENU
+    await q.edit_message_text(f"{CART_T[l]}\n\n{fmt_cart(c,l)}\n\n{TOTAL[l]}: <b>{total(c):,} won</b>", parse_mode="HTML", reply_markup=cart_kb(l))
+    return S_CART
 
-async def clear_cart(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    ctx.user_data["cart"] = {}
-    lang = ctx.user_data.get("lang","uz")
-    await q.edit_message_text(
-        TEXTS[lang]["cart_empty"],
-        reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton(TEXTS[lang]["back"], callback_data="menu")
-        ]])
-    )
-    return MENU
+async def do_clear(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    ctx.user_data["cart"] = {}; l = lang(ctx)
+    await q.edit_message_text(EMPTY[l], reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(BACK[l], callback_data="menu")]]))
+    return S_MENU
 
-async def checkout(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = ctx.user_data.get("lang","uz")
-    cart = get_cart(ctx)
-    if not cart:
-        await q.edit_message_text(TEXTS[lang]["cart_empty"])
-        return MENU
-    await q.edit_message_text(TEXTS[lang]["enter_name"], parse_mode="HTML")
-    return NAME
+async def go_checkout(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    l = lang(ctx)
+    if not cart(ctx):
+        await q.edit_message_text(EMPTY[l]); return S_MENU
+    await q.edit_message_text(NAMET[l], parse_mode="HTML")
+    return S_NAME
 
-async def get_name(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    ctx.user_data["name"] = update.message.text
-    lang = ctx.user_data.get("lang","uz")
-    kb = ReplyKeyboardMarkup(
-        [[KeyboardButton(TEXTS[lang]["share_phone"], request_contact=True)]],
-        one_time_keyboard=True, resize_keyboard=True
-    )
-    await update.message.reply_text(TEXTS[lang]["enter_phone"], reply_markup=kb)
-    return PHONE
+async def get_name(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    ctx.user_data["name"] = u.message.text; l = lang(ctx)
+    kb = ReplyKeyboardMarkup([[KeyboardButton(PHBTN[l], request_contact=True)]], one_time_keyboard=True, resize_keyboard=True)
+    await u.message.reply_text(PHONET[l], reply_markup=kb)
+    return S_PHONE
 
-async def get_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    lang = ctx.user_data.get("lang","uz")
-    ctx.user_data["phone"] = update.message.contact.phone_number if update.message.contact else update.message.text
-    await update.message.reply_text(TEXTS[lang]["enter_address"], reply_markup=ReplyKeyboardRemove())
-    return ADDRESS
+async def get_phone(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    ctx.user_data["phone"] = u.message.contact.phone_number if u.message.contact else u.message.text
+    l = lang(ctx)
+    await u.message.reply_text(ADDRT[l], reply_markup=ReplyKeyboardRemove())
+    return S_ADDR
 
-async def get_address(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    lang = ctx.user_data.get("lang","uz")
-    ctx.user_data["address"] = update.message.text
-    cart = get_cart(ctx)
-    total = cart_total(cart)
-    items = format_cart(cart, lang)
+async def get_addr(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    ctx.user_data["addr"] = u.message.text; l = lang(ctx)
+    c = cart(ctx); t = total(c); items = fmt_cart(c,l)
     oid = datetime.now().strftime("%d%m%H%M")
-
-    await update.message.reply_text(
-        TEXTS[lang]["confirmed"], parse_mode="HTML"
+    await u.message.reply_text(DONE[l], parse_mode="HTML")
+    await ctx.bot.send_message(
+        chat_id=ADMIN_ID, parse_mode="HTML",
+        text=f"🆕 <b>BUYURTMA #{oid}</b>\n👤 {ctx.user_data.get('name')}\n📱 {ctx.user_data.get('phone')}\n📍 {ctx.user_data.get('addr')}\n🌐 {l.upper()}\n\n{items}\n\n💰 <b>{t:,} won</b>"
     )
-
-    admin_msg = (
-        f"🆕 <b>BUYURTMA #{oid}</b>\n"
-        f"👤 {ctx.user_data.get('name')}\n"
-        f"📱 {ctx.user_data.get('phone')}\n"
-        f"📍 {ctx.user_data.get('address')}\n"
-        f"🌐 {lang.upper()}\n\n"
-        f"🛒 {items}\n\n"
-        f"💰 <b>{total:,} won</b>\n"
-        f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-    )
-    await ctx.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_msg, parse_mode="HTML")
-
     ctx.user_data["cart"] = {}
-    await update.message.reply_text(
-        TEXTS[lang]["welcome"], parse_mode="HTML",
-        reply_markup=main_kb(lang)
-    )
-    return MENU
+    await u.message.reply_text(WELCOME[l], parse_mode="HTML", reply_markup=main_kb(l))
+    return S_MENU
 
-async def contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = ctx.user_data.get("lang","uz")
-    await q.edit_message_text(
-        TEXTS[lang]["contact"], parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton(TEXTS[lang]["back"], callback_data="main")
-        ]])
-    )
-    return MENU
+async def contact(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer(); l = lang(ctx)
+    await q.edit_message_text("📞 Telegram: @mr_yigitaliev\n🚚 Butun Koreya / Вся Корея / 한국 전국",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(BACK[l], callback_data="main")]]))
+    return S_MENU
 
-async def change_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    await q.edit_message_text(
-        "🌐 Tilni tanlang / Выберите язык / 언어 선택:",
-        reply_markup=lang_kb()
-    )
-    return LANG
+async def chlang(u: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = u.callback_query; await q.answer()
+    await q.edit_message_text("🌐 Tilni tanlang / Выберите язык / 언어 선택:", reply_markup=lang_kb())
+    return S_LANG
 
-def main():
+if __name__ == "__main__":
     app = Application.builder().token(BOT_TOKEN).build()
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            LANG: [CallbackQueryHandler(lang_chosen, pattern="^lang_")],
-            MENU: [
-                CallbackQueryHandler(show_menu, pattern="^menu$"),
-                CallbackQueryHandler(show_cart, pattern="^cart$"),
-                CallbackQueryHandler(add_item, pattern="^add_"),
-                CallbackQueryHandler(checkout, pattern="^checkout$"),
-                CallbackQueryHandler(contact, pattern="^contact$"),
-                CallbackQueryHandler(show_main, pattern="^main$"),
-                CallbackQueryHandler(change_lang, pattern="^change_lang$"),
+            S_LANG: [CallbackQueryHandler(set_lang, pattern="^L_")],
+            S_MENU: [
+                CallbackQueryHandler(go_menu,     pattern="^menu$"),
+                CallbackQueryHandler(go_cart,     pattern="^cart$"),
+                CallbackQueryHandler(add,         pattern="^A_"),
+                CallbackQueryHandler(go_checkout, pattern="^checkout$"),
+                CallbackQueryHandler(contact,     pattern="^contact$"),
+                CallbackQueryHandler(go_main,     pattern="^main$"),
+                CallbackQueryHandler(chlang,      pattern="^chlang$"),
             ],
-            CART: [
-                CallbackQueryHandler(checkout, pattern="^checkout$"),
-                CallbackQueryHandler(clear_cart, pattern="^clear_cart$"),
-                CallbackQueryHandler(show_menu, pattern="^menu$"),
+            S_CART: [
+                CallbackQueryHandler(go_checkout, pattern="^checkout$"),
+                CallbackQueryHandler(do_clear,    pattern="^clearcart$"),
+                CallbackQueryHandler(go_menu,     pattern="^menu$"),
             ],
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            PHONE: [
-                MessageHandler(filters.CONTACT, get_phone),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone),
-            ],
-            ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)],
+            S_NAME:  [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
+            S_PHONE: [MessageHandler(filters.CONTACT | (filters.TEXT & ~filters.COMMAND), get_phone)],
+            S_ADDR:  [MessageHandler(filters.TEXT & ~filters.COMMAND, get_addr)],
         },
         fallbacks=[CommandHandler("start", start)],
     )
     app.add_handler(conv)
     print("✅ DONA BOT ishga tushdi!")
     app.run_polling(drop_pending_updates=True)
-
-if __name__ == "__main__":
-    main()
