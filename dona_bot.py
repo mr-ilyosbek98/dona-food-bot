@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = "8944732139:AAG5ONRQCyGsKkre6vSxdyODUC_vPR8eVaY"
-ADMIN_ID = 961419057
+ADMIN_ID = -1003984119169
 
 PRODUCTS = {
     "manti":      {"uz":"🥟 Manti",      "ru":"🥟 Манты",       "ko":"🥟 만티",     "price":10000},
